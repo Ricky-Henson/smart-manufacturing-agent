@@ -1,0 +1,3 @@
+# Normalize line endings to LF in the repo (dev is WSL/Linux; GPU box is Linux).
+# Avoids CRLF<->LF churn on the Windows <-> WSL <-> A6000 round-trip.
+* text=auto eol=lf
