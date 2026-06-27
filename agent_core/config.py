@@ -1,8 +1,12 @@
 """Central configuration.
 
-Reads MODEL_NAME and every D:\ data root from .env ONLY — no hardcoded paths
-live anywhere else in the codebase. This is what makes the CPU -> GitHub -> GPU
+Reads MODEL_NAME and every data root from .env ONLY — no hardcoded paths live
+anywhere else in the codebase. This is what makes the CPU -> GitHub -> GPU
 round-trip painless (PLAN: "CPU -> GitHub -> GPU discipline").
+
+The data-root defaults below are a DATA_ROOT-style config pointing OFF the code
+drive: `D:\` is the Windows example (C: is small); on WSL/Linux set `/mnt/d/...`
+or any disk in .env. Nothing writes to `D:\` unless .env says so.
 """
 from pathlib import Path
 
@@ -24,7 +28,7 @@ class Settings(BaseSettings):
     model_name: str = "qwen2.5:7b-instruct-q4_K_M"
     embed_model: str = "bge-m3"
 
-    # --- Data roots (on D:\) ---
+    # --- Data roots (off the code drive; D:\ = Windows example, /mnt/d on WSL) ---
     data_dir: Path = Path("D:/smart-mfg-agent/data")
     vectorstore_dir: Path = Path("D:/smart-mfg-agent/vectorstore")
     memory_dir: Path = Path("D:/smart-mfg-agent/memory")

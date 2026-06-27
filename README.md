@@ -20,7 +20,9 @@ offline demo. Both need **Ollama running in WSL** (see below).
 
 Build order + per-module status: [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
 Concepts: [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md). Decisions/ADRs:
-[docs/DESIGN_CHOICES.md](docs/DESIGN_CHOICES.md). Frozen direction: [PLAN.md](PLAN.md).
+[docs/DESIGN_CHOICES.md](docs/DESIGN_CHOICES.md). Engineering Q&A:
+[docs/FAQ.md](docs/FAQ.md). Frozen direction: [PLAN.md](PLAN.md). Stage-2 roadmap
+(Detect→Act→Optimize, OR-Tools, gated autonomy): [docs/PLAN_STAGE2.md](docs/PLAN_STAGE2.md).
 
 ### Resuming in a new session (e.g. after `git pull` on the GPU box)
 1. `python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt`
@@ -33,7 +35,7 @@ Concepts: [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md). Decisions/ADRs:
 ## Layout
 ```
 agent_core/      Python agent core (FastAPI :8000) — all logic here
-  config.py      MODEL_NAME + D:\ roots from .env (no hardcoded paths)
+  config.py      MODEL_NAME + data roots from .env (no hardcoded paths)
   ingest.py      load lot CSV
   detector.py    DETERMINISTIC anomaly detection (no LLM)
   rag.py         ChromaDB SOP retrieval, cited [N]
@@ -47,10 +49,13 @@ data_spec/       QC-SOP.md source + synthetic-data schema notes
 docs/            HOW_IT_WORKS.md (concepts) + IMPLEMENTATION.md (technical)
                  + DESIGN_CHOICES.md (why Hermes-style; domain coverage)
 ui-springboot/   thin Spring Boot + Thymeleaf dashboard (:8080) — see NOTES.md
+mcp_server/      optional MCP server: read-only tools over MCP (requirements-mcp.txt)
 tests/           pytest
 ```
-Heavy, regenerable artifacts (datasets, vector store, memory, models) live on
-`D:\` per [SETUP.md](SETUP.md) — never committed.
+Heavy, regenerable artifacts (datasets, vector store, memory, models) live
+*outside the repo* at paths from `.env` (`DATA_DIR` / `VECTORSTORE_DIR` /
+`MEMORY_DIR`, + `OLLAMA_MODELS`) — never committed. Use any disk: `D:\…` on
+Windows (see [SETUP.md](SETUP.md)), `/mnt/d/…` or any path on WSL/Linux.
 
 ## Quick start (WSL — mirrors the GPU box)
 Debian Python is externally-managed (PEP 668), so always use a venv:

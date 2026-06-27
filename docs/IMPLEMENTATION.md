@@ -12,7 +12,7 @@ Two processes over HTTP:
 ## Modules (`agent_core/`)
 | Module | Kind | Responsibility |
 |---|---|---|
-| `config.py` | — | MODEL_NAME + D:\ roots from `.env`. No hardcoded paths. |
+| `config.py` | — | MODEL_NAME + data roots from `.env` (`DATA_DIR`/`VECTORSTORE_DIR`/`MEMORY_DIR`). No hardcoded paths. |
 | `ingest.py` | I/O | load lot CSV (lot/wafer/die x-y, Vt/Idd/leakage). |
 | `detector.py` | **deterministic** | config limits + σ-rule/isolation-forest → flagged + breached params. *No LLM.* |
 | `rag.py` | retrieval | ChromaDB over `QC-SOP.md`; cited clause `[N]`. |
@@ -91,6 +91,13 @@ Pinned `requirements.txt`; all randomness seeded by `SEED`; every path from
 `.env`. CPU dev ↔ A6000 GPU comparable. GPU box: `git pull` → `ollama pull` →
 regenerate seeded data + rebuild index.
 
+**Data roots are a `DATA_ROOT`-style config, not a fixed drive.** `DATA_DIR` /
+`VECTORSTORE_DIR` / `MEMORY_DIR` (+ `OLLAMA_MODELS` for models) point *off the code
+drive* so the repo stays light. `D:\…` is just the **Windows** example (C: is
+small); on **WSL/Linux** use `/mnt/d/…` or any disk. The `D:\` defaults in
+`config.py` are placeholders — set real paths in `.env` per machine. **Nothing is
+written to `D:\` unless `.env` says so.**
+
 ## Detector (DONE) — `detector.py`
 Deterministic, no LLM. Config QC limits (`QC_LIMITS`: LSL/USL ~4σ off nominal,
 set by PE/customers, separate from the generator's physics) + three explainable
@@ -100,7 +107,9 @@ rules per parameter:
 3. **drift** — per-wafer-mean range > `DRIFT_RANGE_SIGMA` (1.5σ).
 A param is breached if any rule fires; the lot is flagged if any param is
 breached. `detect_lot(df)` is pure/testable; `detect(lot_id)` loads via `ingest`.
-Result: `DetectionResult(lot_id, flagged, breached_params, detail)`.
+Result: `DetectionResult(lot_id, flagged, breached_params, detail, severity)`.
+**`severity`** = worst rule ratio (0 when clean, ≥1 when flagged) — the confidence
+seam for gated auto-hold + UI risk sorting (see `docs/PLAN_STAGE2.md`).
 
 ## Eval (DONE) — `scripts/eval.py`
 `score()` runs the detector over every labeled lot and returns
@@ -176,12 +185,45 @@ Three Hermes-style contracts, each a folder with `SKILL.md` (spec) + `run.py`
 Scaffold (done) → synthetic data generator (done) → detector + eval (done,
 F1=0.88 on seed 42) → RAG + `QC-SOP.md` (done) → decide + agent draft (done)
 → shell + report + audit log (done) → skills layer (done) → /ask tool loop (done)
-→ memory recall (done) → api wiring (done) → eval credibility (done) →
-**Spring UI** (next) → offline demo.
-**Core + HTTP surface done; tested offline (41 tests).** What remains is the thin
+→ memory recall (done) → api wiring (done) → eval credibility (done) → optional
+MCP server (done) → **Spring UI** (next) → offline demo.
+**Core + HTTP surface done; tested offline (43 tests).** What remains is the thin
 Spring/Thymeleaf UI + the live demo — no new agent logic.
+
+## MCP server (optional, DONE) — `mcp_server/`
+A FastMCP **stdio** server exposing **read-only** tools (`list_lots`,
+`get_lot_stats`, `detect_lot`, `retrieve_sop`) over the Model Context Protocol, so
+external MCP clients (e.g. Claude Desktop) can call the same deterministic,
+already-tested functions. **No actions** (approve/override) are exposed — the model
+can read, never act. Optional dep (`requirements-mcp.txt`, bumps the core to
+fastapi 0.138/starlette 1.x). Smoke-tested in `tests/test_mcp_server.py`
+(skips if `mcp` isn't installed). The agent itself does **not** require MCP —
+this is an integration surface over the existing MCP-style tools. See
+`mcp_server/README.md`.
 
 ## Open items
 - **Ollama in WSL** — see *Dev environment* above; resolve before the live demo.
 - ~~Trivial eval~~ — resolved: process variation + subtler anomalies give F1=0.88
   with a real precision/recall tradeoff (see Eval above).
+
+## Hardening & future work (known weak spots, prioritized)
+Nothing blocks continuing; this is the honest state.
+
+**Address soon**
+1. **Live tool-calling unproven.** The `/ask` loop + draft are tested with *fakes*;
+   real small-model tool-calling reliability (PREP §1) is untested. Mitigation
+   (validate-then-retry) exists but unverified live. → smoke-test on Ollama-in-WSL.
+2. **No confidence/severity score.** Detection is binary `flagged`. A per-lot
+   severity (how far past limit, how many rules fired) would enable an auto-approve
+   gate, richer UI sorting, and a better demo. Medium effort, high value.
+
+**Future / when needed**
+3. **Detector is simple** — thresholds + σ-rules; the isolation-forest option isn't
+   built; no multivariate detection.
+4. **RAG corpus is a placeholder** — `QC-SOP.md` clauses are synthetic stubs.
+5. **Security** — the API has **no auth / rate limiting** (fine for localhost; add
+   if exposed). The deterministic shell already blocks the worst LLM risk (action
+   injection — the model can't act). Input validation is light.
+6. **Minor**: `/ask` handles one tool call per step (ignores parallel calls);
+   reports overwrite per lot (history is in the log); the markdown index isn't
+   auto-refreshed; the audit log has no concurrency locking (single-user local).

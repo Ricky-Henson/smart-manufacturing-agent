@@ -19,6 +19,21 @@ build the tool contract we need now, and a persona layer can be added later if w
 ever want one. **A `SOUL.md` purely for tone/voice is cheap and harmless — that's
 fine.** The only thing genuinely out of scope is *autonomy* (see below).
 
+### Goal difference (the core distinction)
+They optimize for **different goals**:
+- **Hermes' goal = verifiable execution.** Make each *tool* provably do exactly
+  what its contract says — correctness, auditability, trust in discrete actions.
+  The question it answers: *"did the tool do the right thing, provably?"*
+- **Persona/agent-OS ("openclaw") goal = a persistent autonomous self.** Give the
+  *agent* identity, values, autonomy, long-horizon goals, and journaling memory —
+  a coherent character that runs itself over days. The question it answers:
+  *"who is this agent, and how does it act on its own over time?"*
+
+So one is about **trust in what a tool does**; the other is about **the agent's
+identity and continuity**. For a regulated, human-approved QC tool, Hermes' goal is
+exactly right and the persona goal's *autonomy* is mostly counter to the design
+(its *tone* aspect is harmless/optional).
+
 ### The two styles are not the same layer
 | | **Hermes-style** (chosen) | **Persona / agent-OS style** (e.g. `SOUL.md`, `DREAMS.md`, `HEARTBEAT.md`) |
 |---|---|---|
