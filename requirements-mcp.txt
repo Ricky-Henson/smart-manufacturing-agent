@@ -1,0 +1,4 @@
+# Optional — only needed to run the MCP server (mcp_server/).
+# The core agent + tests do NOT depend on this.
+#   pip install -r requirements-mcp.txt
+mcp==1.28.0

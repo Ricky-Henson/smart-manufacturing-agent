@@ -35,6 +35,17 @@ def test_each_mode_flags_its_parameter(tmp_path):
     assert sum(bool(b) for b in none) <= 0.3 * len(none)         # FPs are the exception
 
 
+def test_severity_score(tmp_path):
+    # severity is the confidence seam: 0 when not flagged, >= 1 when flagged.
+    generate(tmp_path, seed=42)
+    for lot in ingest.list_lots(tmp_path):
+        r = detector.detect(lot, tmp_path)
+        if r.flagged:
+            assert r.severity >= 1.0
+        else:
+            assert r.severity == 0.0
+
+
 def test_tool_drift_can_fire_the_drift_rule(tmp_path):
     generate(tmp_path, seed=42)
     labels = ingest.load_labels(tmp_path)

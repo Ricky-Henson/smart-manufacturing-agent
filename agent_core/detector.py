@@ -55,7 +55,9 @@ class DetectionResult:
     lot_id: str
     flagged: bool
     breached_params: list[str]
-    detail: dict  # per-param stats + which rules fired
+    detail: dict           # per-param stats + which rules fired
+    severity: float = 0.0  # how far past the worst threshold (>=1 when flagged); the
+                           # confidence seam for gated auto-hold + UI sorting (Stage 2)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -77,10 +79,16 @@ def _evaluate_param(df: pd.DataFrame, param: str, lim: ParamLimits) -> dict:
     if drift_range_sigma > DRIFT_RANGE_SIGMA:
         rules.append("drift")
 
+    # severity = worst rule ratio; > 1.0 exactly when a rule fired (= breached).
+    severity = max(out_frac / MAX_OUT_FRAC,
+                   mean_shift_sigma / MEAN_SHIFT_SIGMA,
+                   drift_range_sigma / DRIFT_RANGE_SIGMA)
+
     return {
         "param": param,
         "breached": bool(rules),
         "rules": rules,
+        "severity": round(severity, 2),
         "out_frac": round(out_frac, 4),
         "lot_mean": round(lot_mean, 4),
         "std": round(float(x.std()), 4),
@@ -94,7 +102,8 @@ def detect_lot(df: pd.DataFrame) -> DetectionResult:
     lot_id = str(df["lot_id"].iloc[0])
     detail = {p: _evaluate_param(df, p, lim) for p, lim in QC_LIMITS.items()}
     breached = [p for p, d in detail.items() if d["breached"]]
-    return DetectionResult(lot_id, bool(breached), breached, detail)
+    severity = round(max((detail[p]["severity"] for p in breached), default=0.0), 2)
+    return DetectionResult(lot_id, bool(breached), breached, detail, severity)
 
 
 def detect(lot_id: str, data_dir=None) -> DetectionResult:
